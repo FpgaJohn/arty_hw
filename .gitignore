@@ -1,0 +1,19 @@
+# Vivado project (regenerated from TCL)
+vivado/arty_hw/
+vivado/.Xil/
+vivado/*.xsa
+vivado/*.log
+vivado/*.jou
+
+# Vitis workspaces (regenerated from build.tcl)
+apps/*/vitis_ws/
+
+# Build artifacts
+apps/arty_hw_test/arty_hw_test
+
+# Logs
+*.log
+
+# General
+.Xil/
+*.jou
