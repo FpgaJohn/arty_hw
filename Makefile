@@ -5,7 +5,7 @@ ARTY_USER ?= petalinux
 
 MAKEFLAGS += --no-print-directory
 
-.PHONY: help xsa xsa-clean bare-metal-build bare-metal-run bare-metal-clean rtos-build rtos-run rtos-clean deploy deploy-run tty fetch-board-parts
+.PHONY: help xsa xsa-clean bare-metal-build bare-metal-run bare-metal-clean rtos-build rtos-run rtos-clean deploy deploy-run tty tty-kill board-reset fetch-board-parts
 
 help:
 	@echo "arty_hw — Arty Z7-20 hardware test suite"
@@ -33,6 +33,8 @@ help:
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make tty               Open Arty Z7 PS-UART in screen (115200 8N1)"
+	@echo "  make tty-kill          Kill any screen/process holding the Arty Z7 PS-UART"
+	@echo "  make board-reset       System-reset the Arty Z7 PS+PL via JTAG (xsct rst -system)"
 	@echo "  make help              Show this help"
 	@echo ""
 	@echo "Variables:"
@@ -80,6 +82,40 @@ done),/dev/ttyUSB1)
 tty:
 	@echo "==> Arty Z7 UART: $(ARTY_UART) (115200 8N1)"
 	screen $(ARTY_UART) 115200
+
+# Kill whoever is holding the Arty Z7 PS-UART (typically a stray screen session).
+tty-kill:
+	@pids=$$(fuser $(ARTY_UART) 2>/dev/null); \
+	if [ -z "$$pids" ]; then \
+	    echo "==> Nothing holding $(ARTY_UART)"; \
+	    exit 0; \
+	fi; \
+	for p in $$pids; do \
+	    sname=$$(screen -ls 2>/dev/null | awk -v p=$$p '$$1 ~ ("^"p"\\.") {print $$1; exit}'); \
+	    if [ -n "$$sname" ]; then \
+	        echo "==> screen -X -S $$sname quit"; \
+	        screen -X -S "$$sname" quit; \
+	    else \
+	        echo "==> kill $$p"; \
+	        kill "$$p" 2>/dev/null || true; \
+	    fi; \
+	done
+
+# System-reset the Arty Z7 via JTAG (PS + PL). Equivalent to pressing SRST on the board.
+VITIS_SETTINGS ?= /tools/Xilinx/Vitis/2024.1/settings64.sh
+board-reset:
+	@if [ ! -f "$(VITIS_SETTINGS)" ]; then \
+	    echo "error: Vitis Classic not found at $(VITIS_SETTINGS)" >&2; \
+	    exit 1; \
+	fi
+	@echo "==> System-resetting Arty Z7 PS+PL via JTAG"
+	@source $(VITIS_SETTINGS) && xsct -eval ' \
+	    connect; \
+	    targets -set -filter {name =~ "APU*" && jtag_cable_name =~ "Digilent*"}; \
+	    rst -system; \
+	    after 1000; \
+	    disconnect'
+	@echo "==> Reset complete"
 
 VIVADO_SETTINGS ?= /tools/Xilinx/Vivado/2024.1/settings64.sh
 
