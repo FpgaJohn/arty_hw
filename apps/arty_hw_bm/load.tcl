@@ -40,6 +40,8 @@ after 500
 
 # Initialize the PS
 targets -set -filter "name =~ \"ARM*#0\" && $arty_cable"
+stop
+after 200
 source $ps7_init_file
 ps7_init
 ps7_post_config
