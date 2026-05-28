@@ -135,7 +135,16 @@ set proj_dir [get_property directory [current_project]]
 
 # Set project properties
 set obj [current_project]
-set_property -name "board_part_repo_paths" -value "" -objects $obj
+# Locate Digilent board files: prefer 2024.1 xhub store, fall back to 2023.2.
+# Run 'make fetch-board-parts' from the repo root to install into 2024.1.
+set _board_repo_paths {}
+foreach _ver {2024.1 2023.2} {
+    set _candidate [file normalize "$::env(HOME)/.Xilinx/Vivado/${_ver}/xhub/board_store/xilinx_board_store/XilinxBoardStore/Vivado/${_ver}/boards"]
+    if {[file isdirectory $_candidate]} {
+        lappend _board_repo_paths $_candidate
+    }
+}
+set_property -name "board_part_repo_paths" -value $_board_repo_paths -objects $obj
 set_property -name "board_part" -value "digilentinc.com:arty-z7-20:part0:1.1" -objects $obj
 set_property -name "default_lib" -value "xil_defaultlib" -objects $obj
 set_property -name "enable_resource_estimation" -value "0" -objects $obj
